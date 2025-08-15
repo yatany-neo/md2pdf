@@ -32,6 +32,51 @@ def build(md_path: str, out_path: Optional[str] = None) -> bool:
 	# 确保段落之间有适当的空行
 	content = re.sub(r'([^\n])\n([^\n])', r'\1\n\n\2', content)
 	
+	# 统一缩进方案 - 根据文档结构制定协调的缩进规则
+	
+	# 1. 长公式多行显示（主要公式）
+	content = re.sub(r'(Feature得分 = \(.*?× 0\.4 \+ .*?× 0\.25 \+ .*?× 0\.15 \+ .*?× 0\.15 \+ ROI得分 × 0\.05\))', 
+	                 r'Feature得分 = (\n    功能覆盖度得分 × 0.4 +\n    响应速度得分 × 0.25 +\n    稳定性得分 × 0.15 +\n    性价比得分 × 0.15 +\n    ROI得分 × 0.05\n  )', content)
+	
+	content = re.sub(r'(Signal得分 = \(.*?× 0\.25 \+ .*?× 0\.3 \+ .*?× 0\.25 \+ .*?× 0\.2\))', 
+	                 r'Signal得分 = (\n    CTR得分 × 0.25 +\n    使用率得分 × 0.3 +\n    重复使用率得分 × 0.25 +\n    用户评分得分 × 0.2\n  )', content)
+	
+	content = re.sub(r'(最终评分 = .*?× 0\.8 \+ .*?× 0\.2)', 
+	                 r'最终评分 = (\n    Feature得分 × 0.8 +\n    Signal得分 × 0.2\n  )', content)
+	
+	content = re.sub(r'(Combined Score = .*)', 
+	                 r'Combined Score = (\n    最终评分\n  )', content)
+	
+	# 2. 简单公式缩进（2个空格）
+	content = re.sub(r'(CTR = \(.*?\) × 100%)', r'  CTR = (点击次数 / 展示次数) × 100%', content)
+	content = re.sub(r'(CTR得分 = CTR × 100)', r'  CTR得分 = CTR × 100', content)
+	content = re.sub(r'(使用率 = \(.*?\) × 100%)', r'  使用率 = (实际使用次数 / 总访问次数) × 100%', content)
+	content = re.sub(r'(使用率得分 = 使用率 × 100)', r'  使用率得分 = 使用率 × 100', content)
+	content = re.sub(r'(重复使用率 = \(.*?\) × 100%)', r'  重复使用率 = (重复使用次数 / 首次使用次数) × 100%', content)
+	content = re.sub(r'(重复使用率得分 = 重复使用率 × 100)', r'  重复使用率得分 = 重复使用率 × 100', content)
+	content = re.sub(r'(用户评分得分 = 平均评分 × 20)', r'  用户评分得分 = 平均评分 × 20', content)
+	
+	# 3. 功能相关公式缩进（2个空格）
+	content = re.sub(r'(功能覆盖度 = \(.*?\) × 100%)', r'  功能覆盖度 = (加权功能得分 / 行业标准加权功能得分) × 100%', content)
+	content = re.sub(r'(响应速度评分 = max\(0, 100 - \(.*?\) × 扣分系数\))', r'  响应速度评分 = max(0, 100 - (平均响应时间 - 基准时间) × 扣分系数)', content)
+	content = re.sub(r'(稳定性评分 = \(1 - 变异系数\) × 100)', r'  稳定性评分 = (1 - 变异系数) × 100', content)
+	content = re.sub(r'(变异系数 = 标准差 / 平均值)', r'  变异系数 = 标准差 / 平均值', content)
+	
+	# 4. ROI相关公式缩进（2个空格）
+	content = re.sub(r'(ROI评分 = min\(100,\(.*?\)/工具成本 × 100\))', r'  ROI评分 = min(100,(量化价值提升 - 工具成本)/工具成本 × 100)', content)
+	content = re.sub(r'(量化价值提升 = .*?价值 \+ .*?价值 \+ .*?价值)', r'  量化价值提升 = 效率提升价值 + 质量提升价值 + 容量提升价值', content)
+	
+	# 5. 子公式缩进（4个空格）
+	content = re.sub(r'(效率提升价值 = .*?× .*?× .*?)', r'    效率提升价值 = 节省工时 × 平均人工成本 × 使用频率', content)
+	content = re.sub(r'(质量提升价值 = .*?× .*?× .*?)', r'    质量提升价值 = 减少错误次数 × 单次错误成本 × 使用频率', content)
+	content = re.sub(r'(容量提升价值 = .*?× .*?× .*?)', r'    容量提升价值 = 新增处理能力 × 单位处理价值 × 使用频率', content)
+	
+	# 6. 性价比相关公式缩进（2个空格）
+	content = re.sub(r'(性价比评分 = min\(100, 功能得分/价格得分 × 100\))', r'  性价比评分 = min(100, 功能得分/价格得分 × 100)', content)
+	content = re.sub(r'(功能得分 = 功能覆盖度得分 × 0\.6 \+ 性能得分 × 0\.4)', r'    功能得分 = 功能覆盖度得分 × 0.6 + 性能得分 × 0.4', content)
+	content = re.sub(r'(性能得分 = 响应速度得分 × 0\.6 \+ 稳定性得分 × 0\.4)', r'      性能得分 = 响应速度得分 × 0.6 + 稳定性得分 × 0.4', content)
+	content = re.sub(r'(价格得分 = 100 - 价格排名百分比)', r'    价格得分 = 100 - 价格排名百分比', content)
+	
 	# 创建临时处理后的文件
 	temp_md = 'temp_processed.md'
 	with open(temp_md, 'w', encoding='utf-8') as f:
@@ -47,16 +92,107 @@ def build(md_path: str, out_path: Optional[str] = None) -> bool:
 \usepackage{fontspec}
 % 中文自动换行设置
 \XeTeXlinebreaklocale "zh"
-\XeTeXlinebreakskip = 0pt plus 0.2pt
+\XeTeXlinebreakskip = 0pt plus 2pt
 \sloppy
-\emergencystretch=5em
-\pretolerance=500
-\tolerance=2000
+\emergencystretch=15em
+\pretolerance=10000
+\tolerance=20000
 \hbadness=10000
 
 % URL 自动换行
 \usepackage{xurl}
 \urlstyle{same}
+
+
+
+% 防止文本截断的额外设置
+\raggedright
+\setlength{\emergencystretch}{25em}
+\setlength{\tolerance}{100000}
+\setlength{\pretolerance}{30000}
+\setlength{\hbadness}{10000}
+
+% 强制文本换行设置
+\sloppy
+\emergencystretch=25em
+\pretolerance=30000
+\tolerance=100000
+\hbadness=10000
+
+% 额外的文本截断防护
+\sloppy
+\emergencystretch=8em
+\pretolerance=2000
+\tolerance=5000
+\hbadness=10000
+
+% 强制文本换行设置
+\setlength{\emergencystretch}{10em}
+\setlength{\tolerance}{10000}
+\setlength{\pretolerance}{5000}
+\setlength{\hbadness}{10000}
+
+% 全局宽松排版
+\sloppy
+\emergencystretch=10em
+\pretolerance=5000
+\tolerance=10000
+\hbadness=10000
+
+% 全局文本处理设置
+\AtBeginDocument{%
+  \sloppy
+  \emergencystretch=25em
+  \pretolerance=30000
+  \tolerance=100000
+  \hbadness=10000
+  \setlength{\emergencystretch}{25em}
+  \setlength{\tolerance}{100000}
+  \setlength{\pretolerance}{30000}
+  \setlength{\hbadness}{10000}
+}
+
+% 代码块优化设置 - 使用fancyvrb包
+\usepackage{fancyvrb}
+\DefineVerbatimEnvironment{Verbatim}{Verbatim}{%
+  fontsize=\small,
+  frame=single,
+  breaklines=true,
+  breakanywhere=true,
+  commandchars=\\\{\},
+  xleftmargin=2em,
+  xrightmargin=1em
+}
+
+% 长公式处理
+\newcommand{\longformula}[1]{\sloppypar\noindent\texttt{#1}\par}
+
+% 强制长文本换行
+\newcommand{\forcebreak}[1]{%
+  \sloppy
+  \emergencystretch=20em
+  \pretolerance=20000
+  \tolerance=50000
+  \hbadness=10000
+  #1
+}
+
+% 专门处理长公式的环境
+\newenvironment{longformulaenv}{%
+  \sloppypar
+  \emergencystretch=25em
+  \pretolerance=30000
+  \tolerance=100000
+  \hbadness=10000
+  \setlength{\emergencystretch}{25em}
+  \setlength{\tolerance}{100000}
+  \setlength{\pretolerance}{30000}
+  \setlength{\hbadness}{10000}
+}{}
+
+
+
+
 
 % 超链接/书签配置
 \usepackage[unicode=true]{hyperref}
@@ -124,16 +260,20 @@ def build(md_path: str, out_path: Optional[str] = None) -> bool:
 		'pandoc', md_path,
 		'--pdf-engine=xelatex',
 		'--toc',
+		'--wrap=none',
 		'-V', 'mainfont=Times New Roman',
 		'-V', 'CJKmainfont=STSong',
-		'-V', 'geometry:margin=3.0cm',
-		'-V', 'fontsize=11pt',
+		'-V', 'geometry:margin=2.5cm',
+		'-V', 'fontsize=10pt',
 		'-V', 'toc-depth=3',
 		'-V', 'toc-title=目录',
 		'-V', 'linestretch=1.2',
 		'-V', 'parskip=0.8em',
 		'-V', 'parindent=1.2em',
 		'-V', 'itemsep=1.0em',
+		'-V', 'emergencystretch=25em',
+		'-V', 'tolerance=100000',
+		'-V', 'pretolerance=30000',
 		'-V', 'parsep=0.5em',
 		'-V', 'topsep=0.5em',
 		'-V', 'partopsep=0.2em',
