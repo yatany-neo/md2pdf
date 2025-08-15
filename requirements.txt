@@ -1,0 +1,7 @@
+# 本项目主要依赖系统工具，Python标准库即可
+# 主要依赖：
+# - pandoc (通过brew安装)
+# - xelatex (通过MacTeX安装)
+
+# 如果需要额外的Python包，可以在这里添加
+# 目前项目只使用Python标准库
