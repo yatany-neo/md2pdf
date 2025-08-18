@@ -5,6 +5,19 @@ pandoc_hyperref_setup.tex
 # PDF输出文件
 pdf_docs/
 
+# 文档文件（只保留代码和配置）
+docs/**/*.md
+*.md
+!README.md
+!scripts/README.md
+
+# Word文档（如果有）
+*.docx
+*.doc
+
+# 想法和临时文件
+ideas.txt
+
 # Python缓存
 __pycache__/
 *.pyc
