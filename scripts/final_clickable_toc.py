@@ -13,6 +13,23 @@ import subprocess
 from pathlib import Path
 from typing import Optional
 
+def extract_title_from_markdown(content: str) -> str:
+	"""从Markdown内容中提取标题"""
+	import re
+	# 查找第一个一级标题
+	match = re.search(r'^#\s+(.+)$', content, re.MULTILINE)
+	if match:
+		return match.group(1).strip()
+	
+	# 如果没找到一级标题，尝试查找第一行的内容作为标题
+	lines = content.strip().split('\n')
+	for line in lines:
+		line = line.strip()
+		if line and not line.startswith('#'):
+			return line
+	
+	return "文档"
+
 def build(md_path: str, out_path: Optional[str] = None) -> bool:
 	if out_path is None:
 		out_dir = Path('../pdf_docs')
@@ -22,6 +39,9 @@ def build(md_path: str, out_path: Optional[str] = None) -> bool:
 	# 预处理Markdown文件，确保列表格式正确
 	with open(md_path, 'r', encoding='utf-8') as f:
 		content = f.read()
+	
+	# 提取文档标题
+	doc_title = extract_title_from_markdown(content)
 	
 	# 确保列表项之间有足够的空行
 	import re
@@ -277,7 +297,7 @@ def build(md_path: str, out_path: Optional[str] = None) -> bool:
 		'-V', 'parsep=0.5em',
 		'-V', 'topsep=0.5em',
 		'-V', 'partopsep=0.2em',
-		'--metadata', 'title=AI Agent & Tools 评分体系设计文档',
+		'--metadata', f'title={doc_title}',
 		'--metadata', 'author=',  # 空
 		'--metadata', 'date=',    # 空
 		'-H', header_file,
@@ -299,6 +319,7 @@ def build(md_path: str, out_path: Optional[str] = None) -> bool:
 
 
 def main():
+	import sys
 	print("🚀 最终稳定版（可点击目录 + 书签 + 格式优化）")
 	for bin_ in ('pandoc', 'xelatex'):
 		try:
@@ -306,7 +327,13 @@ def main():
 		except Exception:
 			print(f"❌ 缺少 {bin_}")
 			return
-	md = '../docs/score_doc/简化版评分体系设计文档.md'
+	
+	# 检查命令行参数
+	if len(sys.argv) > 1:
+		md = sys.argv[1]
+	else:
+		md = '../docs/score_doc/简化版评分体系设计文档.md'
+	
 	if not os.path.exists(md):
 		print(f"❌ 文件不存在: {md}")
 		return
