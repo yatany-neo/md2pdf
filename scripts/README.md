@@ -4,20 +4,36 @@
 
 ## 文件说明
 
-### `final_clickable_toc.py`
-主要的PDF转换脚本，具有以下特性：
+### `final_clickable_toc.py` (推荐使用)
+**主要PDF转换脚本**，具有以下特性：
 
 - **中文支持**：完美支持中文字符显示
 - **可点击目录**：PDF内目录支持点击跳转
 - **侧栏书签**：PDF侧边栏显示可点击的书签
 - **格式优化**：段落缩进、列表间距等格式优化
 - **特殊字符处理**：正确处理标题中的特殊字符
+- **稳定性**：经过充分测试，可靠性高
+- **适用场景**：无emoji的正式文档转换
+
+### `final_clickable_toc_emoji_simple.py` (备用)
+**简化版emoji清理转换器**，具有以下特性：
+
+- **emoji清理**：智能清理常见emoji字符
+- **Markdown保护**：保护粗体、斜体等Markdown语法
+- **简化处理**：避免复杂的正则表达式处理
+- **适用场景**：包含emoji的文档转换
+- **注意事项**：相比稳定版，处理逻辑稍复杂
 
 ## 使用方法
 
-### 基本使用
+### 推荐使用 (无emoji文档)
 ```bash
-python3 final_clickable_toc.py
+python3 final_clickable_toc.py [markdown文件路径]
+```
+
+### 备用使用 (含emoji文档)
+```bash
+python3 final_clickable_toc_emoji_simple.py [markdown文件路径]
 ```
 
 ### 自定义转换
@@ -54,6 +70,7 @@ build('path/to/input.md')
 
 ## 版本历史
 
+### `final_clickable_toc.py` (稳定版)
 - **v12**: 修复标题中 & 字符显示问题
 - **v11**: 添加段落缩进优化
 - **v10**: 修复标题转义问题
@@ -63,3 +80,20 @@ build('path/to/input.md')
 - **v4**: 格式一致性优化
 - **v3**: 目录编号优化
 - **v2**: 中文显示优化
+
+### `final_clickable_toc_emoji_simple.py` (简化版)
+- **v1**: 简化emoji清理，避免复杂处理
+- **特性**: 智能清理常见emoji，保护Markdown语法
+- **适用**: 包含emoji的文档转换
+
+## 选择建议
+
+**推荐使用 `final_clickable_toc.py`**：
+- 文档不包含emoji
+- 需要最高稳定性
+- 正式文档转换
+
+**备用使用 `final_clickable_toc_emoji_simple.py`**：
+- 文档包含emoji
+- 需要清理emoji显示
+- 可以接受稍复杂的处理逻辑
