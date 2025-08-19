@@ -43,14 +43,136 @@ def build(md_path: str, out_path: Optional[str] = None) -> bool:
 	# 提取文档标题
 	doc_title = extract_title_from_markdown(content)
 	
-	# 确保列表项之间有足够的空行
+	# 优化Markdown格式，保持原有结构
 	import re
-	# 在每个列表项后添加空行，确保单独成行
-	content = re.sub(r'(\n- [^\n]*)\n(?=- )', r'\1\n\n', content)
-	content = re.sub(r'(\n\d+\. [^\n]*)\n(?=\n\d+\. )', r'\1\n\n', content)
 	
-	# 确保段落之间有适当的空行
-	content = re.sub(r'([^\n])\n([^\n])', r'\1\n\n\2', content)
+	# 1. 保护代码块不被修改
+	code_blocks = []
+	def preserve_code_block(match):
+		code_blocks.append(match.group(0))
+		return f"__CODE_BLOCK_{len(code_blocks)-1}__"
+	
+	# 保护所有代码块（包括```和行内代码）
+	content = re.sub(r'```[\s\S]*?```', preserve_code_block, content)
+	content = re.sub(r'`[^`\n]+`', preserve_code_block, content)
+	
+	# 2. 改善段落和列表的间距
+	# 确保标题后有空行
+	content = re.sub(r'(^#{1,6}\s+.*?)(\n)([^#\n])', r'\1\n\n\3', content, flags=re.MULTILINE)
+	
+	# 确保列表项之间有适当的空行，但不破坏嵌套结构
+	# 为主列表项添加空行（不影响子项）
+	content = re.sub(r'(\n- [^\n]*)\n(?=- [^\n]*)', r'\1\n\n', content)
+	content = re.sub(r'(\n\d+\. [^\n]*)\n(?=\d+\. [^\n]*)', r'\1\n\n', content)
+	
+	# 3. 确保段落之间有适当的空行
+	# 避免过度添加空行，只在需要的地方添加
+	lines = content.split('\n')
+	processed_lines = []
+	i = 0
+	while i < len(lines):
+		line = lines[i]
+		processed_lines.append(line)
+		
+		# 如果当前行不为空，下一行也不为空，且都不是特殊格式，则添加空行
+		if (i < len(lines) - 1 and 
+			line.strip() and 
+			lines[i + 1].strip() and
+			not line.startswith('#') and 
+			not lines[i + 1].startswith('#') and
+			not line.startswith('-') and
+			not lines[i + 1].startswith('-') and
+			not line.startswith('*') and
+			not lines[i + 1].startswith('*') and
+			not re.match(r'^\d+\.', line) and
+			not re.match(r'^\d+\.', lines[i + 1]) and
+			not line.startswith('>') and
+			not lines[i + 1].startswith('>') and
+			'__CODE_BLOCK_' not in line and
+			'__CODE_BLOCK_' not in lines[i + 1]):
+			
+			# 检查是否已经有空行
+			if i < len(lines) - 1 and lines[i + 1].strip():
+				processed_lines.append('')  # 添加空行
+		
+		i += 1
+	
+	content = '\n'.join(processed_lines)
+	
+	# 4. 改善ASCII图表显示
+	# 为ASCII图表添加特殊标记
+	ascii_art_pattern = r'```\n([\s\S]*?[┌┐└┘│─├┤┬┴┼]+[\s\S]*?)\n```'
+	def enhance_ascii_art(match):
+		content = match.group(1)
+		return f'```{{.ascii}}\n{content}\n```'
+	
+	# 先恢复代码块
+	for i, code_block in enumerate(code_blocks):
+		content = content.replace(f"__CODE_BLOCK_{i}__", code_block)
+	
+	# 然后处理ASCII艺术
+	content = re.sub(ascii_art_pattern, enhance_ascii_art, content)
+	
+	# 5. 改善markdown文本格式，让PDF更接近原始文档
+	# 确保重要的格式标记得到保留
+	
+	# 改善引用块的显示
+	content = re.sub(r'^> \*\*(.*?)\*\*：(.*?)$', r'> **\1**: \2', content, flags=re.MULTILINE)
+	
+	# 改善API接口标题的显示
+	content = re.sub(r'^#### (\d+\.\d+) (.*?)API$', r'#### \1 \2 API', content, flags=re.MULTILINE)
+	
+	# 改善生命周期阶段标记的显示  
+	content = re.sub(r'^\*生命周期阶段：(.*?)\*$', r'*🔄 生命周期阶段: \1*', content, flags=re.MULTILINE)
+	
+	# 6. 移除旧的定义处理逻辑，统一使用后面的处理
+	
+	# 7. 为不同类型的代码块添加特殊标记
+	# HTTP请求代码块
+	content = re.sub(r'```http\n([\s\S]*?)\n```', r'```{.http}\n\1\n```', content)
+	
+	# JSON代码块
+	content = re.sub(r'```json\n([\s\S]*?)\n```', r'```{.json}\n\1\n```', content)
+	
+	# 8. 统一处理所有定义标题的格式和内容缩进
+	lines = content.split('\n')
+	processed_lines = []
+	i = 0
+	
+	while i < len(lines):
+		line = lines[i]
+		
+		# 检测所有类型的定义标题
+		if re.match(r'^\*\*(功能描述|应用举例|技术实现|使用场景|注意事项|实现细节|返回格式|错误处理)\*\*[：:]', line.strip()):
+			# 确保前面有空行
+			if processed_lines and processed_lines[-1].strip():
+				processed_lines.append('')
+			
+			processed_lines.append(line)
+			i += 1
+			
+			# 确保后面有空行
+			processed_lines.append('')
+			
+			# 处理定义内容的缩进
+			while i < len(lines) and lines[i].strip():
+				content_line = lines[i]
+				# 如果不是特殊格式，添加缩进
+				if (not content_line.startswith('#') and 
+					not content_line.startswith('```') and
+					not re.match(r'^\*\*(.*?)\*\*[：:]', content_line.strip()) and
+					content_line.strip()):
+					# 添加缩进
+					if not content_line.startswith('  '):
+						content_line = '  ' + content_line.lstrip()
+				processed_lines.append(content_line)
+				i += 1
+			continue
+		
+		processed_lines.append(line)
+		i += 1
+	
+	content = '\n'.join(processed_lines)
 	
 	# 统一缩进方案 - 根据文档结构制定协调的缩进规则
 	
@@ -172,17 +294,102 @@ def build(md_path: str, out_path: Optional[str] = None) -> bool:
   \setlength{\hbadness}{10000}
 }
 
-% 代码块优化设置 - 使用fancyvrb包
+% 改进的代码块和缩进设置
 \usepackage{fancyvrb}
+\usepackage{xcolor}
+\definecolor{codebg}{RGB}{248,248,248}
+\definecolor{codeframe}{RGB}{220,220,220}
+
+% 主要代码块环境 - 更好的缩进
+\DefineVerbatimEnvironment{Highlighting}{Verbatim}{%
+  fontsize=\small,
+  baselinestretch=1.1,
+  frame=leftline,
+  framerule=2pt,
+  framesep=0.8em,
+  xleftmargin=2.5em,
+  rulecolor=\color{codeframe},
+  commandchars=\\\{\}
+}
+
+% JSON和API代码的特殊环境
+\DefineVerbatimEnvironment{CodeBlock}{Verbatim}{%
+  fontfamily=tt,
+  fontsize=\footnotesize,
+  baselinestretch=1.05,
+  frame=single,
+  framerule=0.4pt,
+  framesep=1.2em,
+  xleftmargin=2em,
+  xrightmargin=1em,
+  rulecolor=\color{codeframe}
+}
+
+% 通用代码块
 \DefineVerbatimEnvironment{Verbatim}{Verbatim}{%
   fontsize=\small,
   frame=single,
-  breaklines=true,
-  breakanywhere=true,
   commandchars=\\\{\},
   xleftmargin=2em,
   xrightmargin=1em
 }
+
+% 定义列表和段落格式改进
+\usepackage{enumitem}
+
+% 定义描述环境 - 用于功能描述等
+\newenvironment{definitiondesc}{%
+  \begin{list}{}{%
+    \setlength{\leftmargin}{2em}%
+    \setlength{\rightmargin}{0em}%
+    \setlength{\itemindent}{0em}%
+    \setlength{\parsep}{0.3em}%
+    \setlength{\itemsep}{0.2em}%
+  }%
+  \item[]%
+}{%
+  \end{list}%
+}
+
+% 改进的列表间距
+\setlist[itemize]{
+  leftmargin=2.5em,
+  itemsep=0.4em,
+  parsep=0.2em,
+  topsep=0.5em
+}
+
+\setlist[enumerate]{
+  leftmargin=2.5em,
+  itemsep=0.4em,
+  parsep=0.2em,
+  topsep=0.5em
+}
+
+% 嵌套列表的特殊处理
+\setlist[itemize,2]{
+  leftmargin=2em,
+  itemsep=0.3em
+}
+
+% 段落缩进控制
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.8em}
+
+% 行内代码的改进样式
+\let\oldtexttt\texttt
+\renewcommand{\texttt}[1]{%
+  \colorbox{codebg}{%
+    \footnotesize\oldtexttt{\hspace{0.2em}#1\hspace{0.2em}}%
+  }%
+}
+
+% 改进标题间距
+\usepackage{titlesec}
+\titlespacing*{\section}{0pt}{*3.5}{*2.5}
+\titlespacing*{\subsection}{0pt}{*3}{*2}  
+\titlespacing*{\subsubsection}{0pt}{*2.5}{*1.5}
+\titlespacing*{\paragraph}{0pt}{*2}{*1}
 
 % 长公式处理
 \newcommand{\longformula}[1]{\sloppypar\noindent\texttt{#1}\par}
